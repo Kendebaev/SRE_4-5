@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NexShop — SRE Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117; --surface:#181c27; --surface2:#1e2435; --border:#2a3245;
+      --accent:#6366f1; --green:#22c55e; --red:#ef4444; --yellow:#f59e0b;
+      --text:#e2e8f0; --muted:#64748b; --radius:10px;
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+    /* ── LAYOUT ── */
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    .logo{font-weight:700;font-size:1.2rem;color:var(--accent)}
+    .hstatus{display:flex;gap:1.5rem;font-size:0.8rem}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+    .dot.up{background:var(--green)}
+    .dot.down{background:var(--red)}
+    .dot.unknown{background:var(--yellow)}
+    main{max-width:1100px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:320px 1fr;gap:1.5rem}
+    @media(max-width:800px){main{grid-template-columns:1fr}}
+    .col{display:flex;flex-direction:column;gap:1.5rem}
+
+    /* ── CARDS ── */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .card-head{padding:.9rem 1.2rem;background:var(--surface2);border-bottom:1px solid var(--border);font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:.5rem}
+    .card-head .icon{font-size:1rem}
+    .card-body{padding:1.2rem}
+
+    /* ── FORM ── */
+    .field{margin-bottom:.9rem}
+    label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:4px}
+    input{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.9rem;font-family:inherit;transition:border-color .2s}
+    input:focus{outline:none;border-color:var(--accent)}
+    .btn{padding:10px 18px;border:none;border-radius:7px;font-weight:600;font-size:.9rem;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:100%;justify-content:center}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-primary:hover{opacity:.85}
+    .btn-primary:disabled{opacity:.4;cursor:not-allowed}
+    .btn-green{background:var(--green);color:#fff}
+    .btn-green:hover{opacity:.85}
+    .btn-sm{width:auto;padding:7px 14px;font-size:.82rem}
+    .btn-outline{background:none;border:1px solid var(--border);color:var(--text)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* ── RESPONSE LOG ── */
+    .log{background:var(--surface2);border-radius:7px;padding:.8rem;font-family:monospace;font-size:.8rem;line-height:1.6;max-height:140px;overflow-y:auto;border:1px solid var(--border);color:var(--muted)}
+    .log .ok{color:var(--green)}
+    .log .err{color:var(--red)}
+    .log .info{color:var(--yellow)}
+    .log-line{margin-bottom:1px}
+
+    /* ── PRODUCT TABLE ── */
+    .product-table{width:100%;border-collapse:collapse;font-size:.88rem}
+    .product-table th{color:var(--muted);font-weight:500;text-align:left;padding:.6rem .8rem;border-bottom:1px solid var(--border);font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}
+    .product-table td{padding:.7rem .8rem;border-bottom:1px solid var(--border)}
+    .product-table tr:last-child td{border-bottom:none}
+    .product-table tr:hover td{background:var(--surface2)}
+    .tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.75rem;font-weight:600}
+    .tag-green{background:rgba(34,197,94,.15);color:var(--green)}
+    .tag-yellow{background:rgba(245,158,11,.15);color:var(--yellow)}
+
+    /* ── ORDER LOG ── */
+    .order-entry{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.8rem 1rem;font-size:.85rem;display:flex;align-items:center;justify-content:space-between;animation:fadeIn .3s}
+    .order-entry .order-meta{color:var(--muted);font-size:.78rem;margin-top:2px}
+    .order-list{display:flex;flex-direction:column;gap:.6rem;max-height:300px;overflow-y:auto}
+
+    /* ── STATUS BADGE ── */
+    .badge-ok{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);padding:3px 10px;border-radius:99px;font-size:.75rem;font-weight:600}
+    .badge-err{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);padding:3px 10px;border-radius:99px;font-size:.75rem;font-weight:600}
+    .token-display{background:var(--surface2);border:1px solid var(--green);border-radius:7px;padding:.7rem .9rem;font-size:.78rem;font-family:monospace;word-break:break-all;color:var(--green);display:none;margin-top:.8rem}
+    
+    /* ── DIVIDER ── */
+    .section-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem;font-weight:600}
+
+    /* ── GRAFANA LINK ── */
+    .ext-links{display:flex;gap:.7rem;flex-wrap:wrap}
+    .ext-link{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.5rem 1rem;font-size:.82rem;color:var(--text);text-decoration:none;transition:all .2s}
+    .ext-link:hover{border-color:var(--accent);color:var(--accent)}
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛒 NexShop — SRE Demo</div>
+  <div class="hstatus" id="svc-status">
+    <span><span class="dot unknown" id="dot-auth"></span>Auth</span>
+    <span><span class="dot unknown" id="dot-product"></span>Products</span>
+    <span><span class="dot unknown" id="dot-order"></span>Orders</span>
+    <span><span class="dot unknown" id="dot-profile"></span>Profile</span>
+    <span><span class="dot unknown" id="dot-chat"></span>Chat</span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT COLUMN -->
+  <div class="col">
+
+    <!-- AUTH -->
+    <div class="card">
+      <div class="card-head"><span class="icon">🔐</span> Auth Service</div>
+      <div class="card-body">
+        <div class="field"><label>Username</label><input id="u" placeholder="e.g. testuser" value="testuser"/></div>
+        <div class="field"><label>Password</label><input id="p" type="password" placeholder="password" value="password123"/></div>
+        <div style="display:flex;gap:.6rem;margin-bottom:.8rem">
+          <button class="btn btn-primary" onclick="doLogin()" id="btn-login">Sign In</button>
+          <button class="btn btn-outline" onclick="doRegister()" id="btn-register">Register</button>
+        </div>
+        <div class="section-label">API Response</div>
+        <div class="log" id="auth-log"><span class="info">— awaiting request —</span></div>
+        <div class="token-display" id="token-box"></div>
+      </div>
+    </div>
+
+    <!-- USER PROFILE -->
+    <div class="card" id="profile-card" style="opacity:0.5;pointer-events:none">
+      <div class="card-head"><span class="icon">👤</span> User Profile Service <span style="font-size:0.7rem;font-weight:normal;margin-left:auto;color:var(--muted)">(Requires Sign In)</span></div>
+      <div class="card-body">
+        <div class="field"><label>Email</label><input id="prof-email" placeholder="example@mail.com"/></div>
+        <div class="field"><label>Full Name</label><input id="prof-fullname" placeholder="John Doe"/></div>
+        <button class="btn btn-primary btn-sm" onclick="saveProfile()" id="btn-save-prof" style="width:100%">Save Profile</button>
+        <div class="log" id="prof-log" style="margin-top:.8rem;max-height:80px;padding:.5rem"><span class="info">— login to load —</span></div>
+      </div>
+    </div>
+
+    <!-- HEALTH / OBSERVABILITY LINKS -->
+    <div class="card">
+      <div class="card-head"><span class="icon">📊</span> Observability</div>
+      <div class="card-body">
+        <div class="section-label" style="margin-bottom:.8rem">External Dashboards</div>
+        <div class="ext-links">
+          <a class="ext-link" href="#" onclick="openObs('prometheus')">🔥 Prometheus</a>
+          <a class="ext-link" href="#" onclick="openObs('grafana')">📈 Grafana</a>
+        </div>
+        <div style="margin-top:1rem" class="section-label">Service Health</div>
+        <div style="margin-top:.6rem;display:flex;flex-direction:column;gap:.5rem" id="health-list">
+          <span style="color:var(--muted);font-size:.85rem">Checking…</span>
+        </div>
+        <button class="btn btn-outline" style="margin-top:.8rem;width:auto;font-size:.8rem;padding:7px 14px" onclick="checkHealth()">↻ Refresh Health</button>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="card">
+      <div class="card-head"><span class="icon">💬</span> Support Chat (WebSocket)</div>
+      <div class="card-body">
+        <div class="log" id="chat-msgs" style="max-height:120px"><span class="info">— connect to start —</span></div>
+        <div style="display:flex;gap:.5rem;margin-top:.7rem">
+          <input id="chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()"/>
+          <button class="btn btn-primary btn-sm" onclick="sendChat()">Send</button>
+        </div>
+        <button class="btn btn-outline" style="margin-top:.6rem;font-size:.8rem;padding:6px 14px;width:auto" onclick="connectWS()">Connect WS</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="col">
+
+    <!-- PRODUCTS -->
+    <div class="card">
+      <div class="card-head"><span class="icon">📦</span> Product Service — Catalog</div>
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+          <div class="section-label" style="margin:0">Live from DB</div>
+          <button class="btn btn-outline btn-sm" onclick="loadProducts()">↻ Refresh</button>
+        </div>
+        <div id="product-wrap">
+          <div class="log"><span class="info">Loading products…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="card">
+      <div class="card-head"><span class="icon">🧾</span> Order Service — Placed Orders</div>
+      <div class="card-body">
+        <div class="section-label">API Response</div>
+        <div class="log" id="order-log" style="margin-bottom:.8rem"><span class="info">— click Place Order to see response —</span></div>
+        <div class="order-list" id="order-list">
+          <span style="color:var(--muted);font-size:.85rem">No orders placed yet this session.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+let token = null;
+let ws = null;
+let products = [];
+let orders = [];
+
+// ── SERVICE HEALTH ──────────────────────────────────────────────
+const SERVICES = [
+  { name: 'Auth',    url: '/api/auth/health',    dot: 'dot-auth'    },
+  { name: 'Product', url: '/api/products/health', dot: 'dot-product' },
+  { name: 'Order',   url: '/api/orders/health',   dot: 'dot-order'   },
+  { name: 'Profile', url: '/api/users/health',    dot: 'dot-profile' },
+  { name: 'Chat',    url: '/api/chat/health',     dot: 'dot-chat'    },
+];
+
+async function checkHealth() {
+  const list = document.getElementById('health-list');
+  list.innerHTML = '';
+  for (const svc of SERVICES) {
+    try {
+      const r = await fetch(svc.url);
+      const data = await r.json();
+      const ok = r.ok && data.status === 'healthy';
+      document.getElementById(svc.dot).className = `dot ${ok ? 'up' : 'down'}`;
+      list.innerHTML += `<div style="display:flex;align-items:center;justify-content:space-between;font-size:.85rem">
+        <span>${svc.name} Service</span>
+        <span class="${ok ? 'badge-ok' : 'badge-err'}">${ok ? '✓ UP' : '✗ DOWN'}</span>
+      </div>`;
+    } catch {
+      document.getElementById(svc.dot).className = 'dot down';
+      list.innerHTML += `<div style="display:flex;align-items:center;justify-content:space-between;font-size:.85rem">
+        <span>${svc.name} Service</span><span class="badge-err">✗ UNREACHABLE</span></div>`;
+    }
+  }
+}
+
+function openObs(type) {
+  const host = location.hostname;
+  const url = type === 'grafana' ? `http://${host}:3000` : `http://${host}:9090`;
+  window.open(url, '_blank');
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────
+function logAuth(msg, type='info') {
+  const el = document.getElementById('auth-log');
+  el.innerHTML += `<div class="log-line ${type}">${timestamp()} ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function doRegister() {
+  const u = document.getElementById('u').value.trim();
+  const p = document.getElementById('p').value;
+  logAuth(`→ POST /api/auth/register  {username: "${u}"}`, 'info');
+  try {
+    const r = await fetch('/api/auth/register', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: u, password: p})
+    });
+    const d = await r.json();
+    if (r.ok) {
+      logAuth(`← ${r.status} OK — registered! Token received.`, 'ok');
+      setToken(d.access_token);
+    } else {
+      logAuth(`← ${r.status} ERROR — ${d.detail}`, 'err');
+    }
+  } catch(e) { logAuth(`← NETWORK ERROR — ${e.message}`, 'err'); }
+}
+
+async function doLogin() {
+  const u = document.getElementById('u').value.trim();
+  const p = document.getElementById('p').value;
+  logAuth(`→ POST /api/auth/login  {username: "${u}"}`, 'info');
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: u, password: p})
+    });
+    const d = await r.json();
+    if (r.ok) {
+      logAuth(`← ${r.status} OK — JWT token received ✓`, 'ok');
+      setToken(d.access_token);
+    } else {
+      logAuth(`← ${r.status} ERROR — ${d.detail}`, 'err');
+    }
+  } catch(e) { logAuth(`← NETWORK ERROR — ${e.message}`, 'err'); }
+}
+
+function setToken(t) {
+  token = t;
+  const box = document.getElementById('token-box');
+  box.style.display = 'block';
+  box.textContent = `JWT: ${t.substring(0,60)}…`;
+  
+  // Load profile data after receiving token
+  loadProfile();
+}
+
+// ── USER PROFILE ─────────────────────────────────────────────────
+function logProf(msg, type='info') {
+  const el = document.getElementById('prof-log');
+  if (el.querySelector('span') && el.querySelector('span').textContent.includes('login')) el.innerHTML = '';
+  el.innerHTML += `<div class="log-line ${type}">${timestamp()} ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadProfile() {
+  const card = document.getElementById('profile-card');
+  card.style.opacity = '1';
+  card.style.pointerEvents = 'auto';
+  
+  logProf('→ GET /api/users/me', 'info');
+  try {
+    const r = await fetch('/api/users/me', {
+      headers: {'Authorization': `Bearer ${token}`}
+    });
+    const d = await r.json();
+    if (r.ok) {
+      logProf(`← OK — loaded profile`, 'ok');
+      document.getElementById('prof-email').value = d.email || '';
+      document.getElementById('prof-fullname').value = d.full_name || '';
+    } else {
+      logProf(`← ERROR — ${d.detail}`, 'err');
+    }
+  } catch(e) { logProf(`← ERROR — ${e.message}`, 'err'); }
+}
+
+async function saveProfile() {
+  const email = document.getElementById('prof-email').value.trim();
+  const fname = document.getElementById('prof-fullname').value.trim();
+  
+  logProf('→ PUT /api/users/me', 'info');
+  try {
+    const r = await fetch('/api/users/me', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({email: email || null, full_name: fname || null})
+    });
+    const d = await r.json();
+    if (r.ok) {
+      logProf('← OK — profile saved ✓', 'ok');
+    } else {
+      logProf(`← ERROR — ${JSON.stringify(d.detail)}`, 'err');
+    }
+  } catch(e) { logProf(`← ERROR — ${e.message}`, 'err'); }
+}
+
+// ── PRODUCTS ─────────────────────────────────────────────────────
+async function loadProducts() {
+  const wrap = document.getElementById('product-wrap');
+  wrap.innerHTML = '<div class="log"><span class="info">→ GET /api/products/ …</span></div>';
+  try {
+    const r = await fetch('/api/products/');
+    products = await r.json();
+    if (!products.length) {
+      wrap.innerHTML = '<div class="log"><span class="err">No products in DB yet.</span></div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="product-table">
+        <thead><tr>
+          <th>#</th><th>Product</th><th>Description</th><th>Price</th><th>Stock</th><th>Action</th>
+        </tr></thead>
+        <tbody>${products.map(p => `
+          <tr>
+            <td style="color:var(--muted)">${p.id}</td>
+            <td><strong>${p.name}</strong></td>
+            <td style="color:var(--muted)">${p.description || '—'}</td>
+            <td style="color:#34d399;font-weight:600">$${parseFloat(p.price).toFixed(2)}</td>
+            <td><span class="tag ${p.stock > 20 ? 'tag-green' : 'tag-yellow'}">${p.stock}</span></td>
+            <td><button class="btn btn-green btn-sm" onclick="placeOrder(${p.id}, '${p.name}', ${p.price})">Place Order</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    wrap.innerHTML = `<div class="log"><span class="err">← NETWORK ERROR — ${e.message}</span></div>`;
+  }
+}
+
+// ── ORDERS ────────────────────────────────────────────────────────
+function logOrder(msg, type='info') {
+  const el = document.getElementById('order-log');
+  el.innerHTML += `<div class="log-line ${type}">${timestamp()} ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function placeOrder(productId, name, price) {
+  logOrder(`→ POST /api/orders/  {product_id: ${productId}, qty: 1, total: $${parseFloat(price).toFixed(2)}}`, 'info');
+  try {
+    const r = await fetch('/api/orders/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? {'Authorization': `Bearer ${token}`} : {})
+      },
+      body: JSON.stringify({user_id: 1, product_id: productId, quantity: 1, total_price: parseFloat(price)})
+    });
+    const d = await r.json();
+    if (r.ok) {
+      logOrder(`← ${r.status} CREATED — Order #${d.id} placed ✓  status: ${d.status}`, 'ok');
+      addOrderEntry(d, name);
+    } else {
+      logOrder(`← ${r.status} ERROR — ${JSON.stringify(d.detail)}`, 'err');
+    }
+  } catch(e) { logOrder(`← NETWORK ERROR — ${e.message}`, 'err'); }
+}
+
+function addOrderEntry(order, name) {
+  const list = document.getElementById('order-list');
+  if (list.querySelector('span')) list.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'order-entry';
+  el.innerHTML = `
+    <div>
+      <div><strong>${name}</strong> × 1 — <span class="badge-ok">✓ ${order.status}</span></div>
+      <div class="order-meta">Order #${order.id} · $${parseFloat(order.total_price).toFixed(2)} · just now</div>
+    </div>`;
+  list.prepend(el);
+}
+
+// ── CHAT ─────────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const msgs = document.getElementById('chat-msgs');
+  try {
+    ws = new WebSocket(`${proto}://${location.host}/api/chat/ws/support`);
+    ws.onopen = () => { msgs.innerHTML = '<span class="ok">✓ Connected to WS /api/chat/ws/support</span>'; };
+    ws.onmessage = e => appendChat(e.data, 'info');
+    ws.onerror = () => appendChat('WebSocket error', 'err');
+    ws.onclose = () => appendChat('Disconnected', 'err');
+  } catch(e) { appendChat('Cannot connect: ' + e.message, 'err'); }
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg || !ws || ws.readyState !== WebSocket.OPEN) {
+    appendChat('Not connected — click Connect WS first', 'err');
+    return;
+  }
+  appendChat(`You: ${msg}`, 'ok');
+  ws.send(msg);
+  input.value = '';
+}
+
+function appendChat(text, type) {
+  const el = document.getElementById('chat-msgs');
+  el.innerHTML += `<div class="log-line ${type}">${timestamp()} ${text}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+function timestamp() {
+  return `<span style="color:var(--muted)">[${new Date().toLocaleTimeString()}]</span>`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+checkHealth();
+loadProducts();
+setInterval(checkHealth, 30000); // auto-refresh health every 30s
+</script>
+</body>
+</html>
