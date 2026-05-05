@@ -1,0 +1,63 @@
+groups:
+  - name: nexshop_sre_alerts
+    rules:
+
+      ##########################################################################
+      # ALERT 1 — Instance Down
+      # Fires when Prometheus cannot scrape a target for more than 1 minute.
+      ##########################################################################
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is DOWN"
+          description: >
+            The instance {{ $labels.instance }} (job={{ $labels.job }}) has
+            been unreachable for more than 1 minute.
+            Check the container: docker logs {{ $labels.job }}
+
+      ##########################################################################
+      # ALERT 2 — High CPU Usage
+      # Fires when process CPU usage exceeds 80 % averaged over 5 minutes.
+      # Uses the process_cpu_seconds_total counter exposed by every FastAPI
+      # service via prometheus-fastapi-instrumentator.
+      ##########################################################################
+      - alert: HighCPUUsage
+        expr: >
+          rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.job }}"
+          description: >
+            Instance {{ $labels.instance }} is using
+            {{ printf "%.1f" $value }}% CPU (threshold: 80%) for the last 5 minutes.
+
+      ##########################################################################
+      # ALERT 3 — High HTTP 5xx Error Rate
+      # Fires when 5xx responses exceed 5 % of total requests over 1 minute.
+      # Uses http_requests_total labels injected by prometheus-fastapi-instrumentator.
+      ##########################################################################
+      - alert: HighErrorRate
+        expr: >
+          (
+            sum by (job) (
+              rate(http_requests_total{status=~"5.."}[1m])
+            )
+            /
+            sum by (job) (
+              rate(http_requests_total[1m])
+            )
+          ) * 100 > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.job }}"
+          description: >
+            {{ $labels.job }} is returning {{ printf "%.1f" $value }}% HTTP 5xx
+            errors over the last minute (threshold: 5%).
+            Investigate recent deployments or database connectivity.

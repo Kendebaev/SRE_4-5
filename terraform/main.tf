@@ -189,6 +189,14 @@ resource "docker_container" "auth" {
   memory = 100
   restart = "unless-stopped"
 
+  healthcheck {
+    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
+
   depends_on = [docker_container.postgres]
 }
 
@@ -211,6 +219,14 @@ resource "docker_container" "product" {
   memory = 100
   restart = "unless-stopped"
 
+  healthcheck {
+    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
+
   depends_on = [docker_container.postgres]
 }
 
@@ -232,6 +248,14 @@ resource "docker_container" "order" {
 
   memory = 100
   restart = "unless-stopped"
+
+  healthcheck {
+    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
 
   depends_on = [docker_container.postgres]
 }
@@ -256,6 +280,14 @@ resource "docker_container" "user" {
   memory = 100
   restart = "unless-stopped"
 
+  healthcheck {
+    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
+
   depends_on = [docker_container.postgres]
 }
 
@@ -277,6 +309,14 @@ resource "docker_container" "user_chat" {
 
   memory = 100
   restart = "unless-stopped"
+
+  healthcheck {
+    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
 
   depends_on = [docker_container.postgres]
 }
@@ -313,6 +353,14 @@ resource "docker_container" "nginx" {
   memory = 50
   restart = "unless-stopped"
 
+  healthcheck {
+    test         = ["CMD-SHELL", "curl -sf http://localhost/health || exit 1"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "5s"
+  }
+
   depends_on = [
     docker_container.auth,
     docker_container.product,
@@ -338,6 +386,12 @@ resource "docker_container" "prometheus" {
   volumes {
     host_path      = abspath("${path.module}/../prometheus/prometheus.yml")
     container_path = "/etc/prometheus/prometheus.yml"
+    read_only      = true
+  }
+
+  volumes {
+    host_path      = abspath("${path.module}/../prometheus/alert.rules.yml")
+    container_path = "/etc/prometheus/alert.rules.yml"
     read_only      = true
   }
 
