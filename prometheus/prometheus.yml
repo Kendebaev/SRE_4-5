@@ -5,25 +5,25 @@ global:
 scrape_configs:
   - job_name: 'auth-service'
     static_configs:
-      - targets: ['auth:8000']
+      - targets: ['auth-service:8000']
     metrics_path: '/metrics'
 
   - job_name: 'product-service'
     static_configs:
-      - targets: ['product:8000']
+      - targets: ['product-service:8000']
     metrics_path: '/metrics'
 
   - job_name: 'order-service'
     static_configs:
-      - targets: ['order:8000']
+      - targets: ['order-service:8000']
     metrics_path: '/metrics'
 
   - job_name: 'user-chat-service'
     static_configs:
-      - targets: ['user_chat:8000']
+      - targets: ['user-chat-service:8000']
     metrics_path: '/metrics'
 
   - job_name: 'user-service'
     static_configs:
-      - targets: ['user:8000']
+      - targets: ['user-service:8000']
     metrics_path: '/metrics'
