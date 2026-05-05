@@ -190,7 +190,7 @@ resource "docker_container" "auth" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -220,7 +220,7 @@ resource "docker_container" "product" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -250,7 +250,7 @@ resource "docker_container" "order" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -281,7 +281,7 @@ resource "docker_container" "user" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -311,7 +311,7 @@ resource "docker_container" "user_chat" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -354,7 +354,7 @@ resource "docker_container" "nginx" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "curl -sf http://localhost/health || exit 1"]
+    test         = ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
