@@ -190,7 +190,7 @@ resource "docker_container" "auth" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -220,7 +220,7 @@ resource "docker_container" "product" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -250,7 +250,7 @@ resource "docker_container" "order" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -281,7 +281,7 @@ resource "docker_container" "user" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -311,7 +311,7 @@ resource "docker_container" "user_chat" {
   restart = "unless-stopped"
 
   healthcheck {
-    test         = ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+    test         = ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
@@ -331,7 +331,7 @@ resource "docker_container" "nginx" {
 
   ports {
     internal = 80
-    external = 80
+    external = 8080
   }
 
   volumes {

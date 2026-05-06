@@ -21,7 +21,7 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+# ── Configuration
 TAIL_LINES=500
 SAVE_REPORT=false
 REPORT_FILE=""
@@ -55,7 +55,7 @@ PATTERNS=(
   "timeout"
 )
 
-# ── Parse arguments ───────────────────────────────────────────────────────────
+# ── Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tail)   TAIL_LINES="$2"; shift 2 ;;
