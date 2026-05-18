@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# =============================================================================
+# 
 # validate_config.sh — NexShop Pre-Deployment Configuration Validator
 # Assignment 6: Automation in SRE and Capacity Planning
 #
 # Usage: bash scripts/validate_config.sh
 # Run this script from the project root BEFORE any `terraform apply`.
-# =============================================================================
+# =
 
 set -euo pipefail
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
+# ── Colour helpers
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -73,7 +73,7 @@ for var in "${REQUIRED_VARS[@]}"; do
 done
 echo ""
 
-# ── Step 3: Validate SECRET_KEY strength ─────────────────────────────────────
+# ── Step 3: Validate SECRET_KEY strength 
 echo "── Step 3: Secret strength check ──"
 SECRET_KEY="${SECRET_KEY:-}"
 if [[ ${#SECRET_KEY} -lt 32 ]]; then
@@ -83,7 +83,7 @@ else
 fi
 echo ""
 
-# ── Step 4: Check required files exist ───────────────────────────────────────
+# ── Step 4: Check required files exist 
 echo "── Step 4: Checking required config files ──"
 REQUIRED_FILES=(
   "prometheus/prometheus.yml"

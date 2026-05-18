@@ -1,0 +1,276 @@
+---
+# =============================================================================
+# NexShop — Ansible Playbook: Full SRE Stack Setup
+# Run with: ansible-playbook -i inventory.ini setup.yml
+# =============================================================================
+
+- name: NexShop SRE Infrastructure Setup
+  hosts: local
+  become: true
+  vars:
+    project_root: "{{ playbook_dir }}/.."
+    swarm_stack_name: nexshop
+
+  tasks:
+    # ════════════════════════════════════════════════════════════════════════
+    #  1. Install System Dependencies
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install prerequisite packages
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - python3-docker
+        state: present
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  2. Install Docker (idempotent)
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Check if Docker is already installed
+      command: docker --version
+      register: docker_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+      when: docker_check.rc != 0
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      when: docker_check.rc != 0
+
+    - name: Install Docker Engine
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+      when: docker_check.rc != 0
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  3. Build Docker Images
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Build auth-service image
+      community.docker.docker_image:
+        name: nexshop-auth
+        tag: latest
+        source: build
+        build:
+          path: "{{ project_root }}/services/auth"
+        state: present
+
+    - name: Build product-service image
+      community.docker.docker_image:
+        name: nexshop-product
+        tag: latest
+        source: build
+        build:
+          path: "{{ project_root }}/services/product"
+        state: present
+
+    - name: Build order-service image
+      community.docker.docker_image:
+        name: nexshop-order
+        tag: latest
+        source: build
+        build:
+          path: "{{ project_root }}/services/order"
+        state: present
+
+    - name: Build user-service image
+      community.docker.docker_image:
+        name: nexshop-user
+        tag: latest
+        source: build
+        build:
+          path: "{{ project_root }}/services/user"
+        state: present
+
+    - name: Build user-chat-service image
+      community.docker.docker_image:
+        name: nexshop-user-chat
+        tag: latest
+        source: build
+        build:
+          path: "{{ project_root }}/services/user_chat"
+        state: present
+
+    - name: Build payment-service image
+      community.docker.docker_image:
+        name: nexshop-payment
+        tag: latest
+        source: build
+        build:
+          path: "{{ project_root }}/services/payment"
+        state: present
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  4. Initialize Docker Swarm (idempotent)
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Check if Docker Swarm is already active
+      command: docker info --format '{%raw%}{{ .Swarm.LocalNodeState }}{%endraw%}'
+      register: swarm_state
+      changed_when: false
+
+    - name: Initialize Docker Swarm
+      command: docker swarm init --advertise-addr 127.0.0.1
+      when: swarm_state.stdout != "active"
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  5. Deploy Docker Swarm Stack
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Deploy NexShop Swarm stack
+      command: >
+        docker stack deploy
+        -c {{ project_root }}/docker-compose.yml
+        {{ swarm_stack_name }}
+      register: swarm_deploy
+      changed_when: "'Creating' in swarm_deploy.stdout or 'Updating' in swarm_deploy.stdout"
+
+    - name: Wait for Swarm services to stabilise
+      pause:
+        seconds: 30
+
+    - name: Verify Swarm services
+      command: docker stack services {{ swarm_stack_name }}
+      register: swarm_services
+      changed_when: false
+
+    - name: Show Swarm services status
+      debug:
+        var: swarm_services.stdout_lines
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  6. Install K3s (idempotent)
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Check if K3s is already installed
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: Install K3s
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--docker --write-kubeconfig-mode 644 --disable traefik" sh -
+      environment:
+        INSTALL_K3S_SKIP_ENABLE: "false"
+      when: not k3s_binary.stat.exists
+
+    - name: Wait for K3s to be ready
+      shell: |
+        for i in $(seq 1 30); do
+          if k3s kubectl get nodes | grep -q ' Ready'; then
+            echo "K3s is ready"
+            exit 0
+          fi
+          echo "Waiting for K3s... attempt $i/30"
+          sleep 10
+        done
+        echo "K3s failed to become ready within 5 minutes"
+        exit 1
+      register: k3s_ready
+      changed_when: false
+
+    - name: Show K3s node status
+      command: k3s kubectl get nodes -o wide
+      register: k3s_nodes
+      changed_when: false
+
+    - name: Display K3s nodes
+      debug:
+        var: k3s_nodes.stdout_lines
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  7. Import Docker images into K3s (so imagePullPolicy: Never works)
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Import Docker images into K3s containerd
+      shell: |
+        docker save {{ item }} | k3s ctr images import -
+      loop:
+        - nexshop-auth:latest
+        - nexshop-product:latest
+        - nexshop-order:latest
+        - nexshop-user:latest
+        - nexshop-user-chat:latest
+        - nexshop-payment:latest
+      register: import_result
+      changed_when: "'unpacking' in import_result.stdout"
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  8. Apply Kubernetes Manifests
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Apply Kubernetes complete-stack manifest
+      command: k3s kubectl apply -f {{ project_root }}/k8s/complete-stack.yaml
+      register: k8s_apply
+      changed_when: "'created' in k8s_apply.stdout or 'configured' in k8s_apply.stdout"
+
+    - name: Wait for Kubernetes pods to start
+      pause:
+        seconds: 30
+
+    - name: Verify Kubernetes pods
+      command: k3s kubectl get pods -n nexshop -o wide
+      register: k8s_pods
+      changed_when: false
+
+    - name: Display Kubernetes pods
+      debug:
+        var: k8s_pods.stdout_lines
+
+    - name: Verify Kubernetes services
+      command: k3s kubectl get svc -n nexshop
+      register: k8s_services
+      changed_when: false
+
+    - name: Display Kubernetes services
+      debug:
+        var: k8s_services.stdout_lines
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  9. Final Summary
+    # ════════════════════════════════════════════════════════════════════════
+    - name: Print deployment summary
+      debug:
+        msg:
+          - "============================================"
+          - "  NexShop SRE Stack Deployment Complete"
+          - "============================================"
+          - ""
+          - "Docker Swarm Stack: {{ swarm_stack_name }}"
+          - "  - Nginx Gateway:  http://localhost:80"
+          - "  - Prometheus:     http://localhost:9090"
+          - "  - Grafana:        http://localhost:3000"
+          - ""
+          - "Kubernetes (K3s) Namespace: nexshop"
+          - "  - Nginx Gateway:  http://localhost:30080"
+          - "  - Prometheus:     http://localhost:30090"
+          - "  - Grafana:        http://localhost:30030"
+          - ""
+          - "Useful commands:"
+          - "  docker stack services nexshop"
+          - "  k3s kubectl get all -n nexshop"
+          - "============================================"

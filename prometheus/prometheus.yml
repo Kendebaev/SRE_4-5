@@ -32,3 +32,8 @@ scrape_configs:
     static_configs:
       - targets: ['user-service:8000']
     metrics_path: '/metrics'
+
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['payment-service:8000']
+    metrics_path: '/metrics'
